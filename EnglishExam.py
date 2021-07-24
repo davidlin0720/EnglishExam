@@ -5,6 +5,7 @@ import csv
 import time
 import os
 from gtts import gTTS
+import re
 from playsound import playsound
 
 # global value
@@ -124,19 +125,23 @@ def UpdateVocabulary(user_name):
 
 
 class Speech(threading.Thread):
-  def __init__(self, voc):
+  def __init__(self, voc, bSave):
     threading.Thread.__init__(self)
     self.voc = voc
+    self.bSave = bSave
 
   def run(self):
-    filename = 'voic/' + self.voc + '.mp3'
+    sub_voic = str(self.voc)
+    #sub_voic = re.sub('[?'.]', '', sub_voic)
+    filename = 'voic/' + sub_voic + '.mp3'
     language = 'en'
     
     if os.path.isfile(filename) == False:
         myobj = gTTS(text=self.voc, lang=language, slow=False)
         # Saving the converted audio in a mp3 file named
+        if self.bSave == False:
+            filename = 'temp.mp3'
         myobj.save(filename)
-  
     # Playing the converted file
     playsound(filename)
 
@@ -173,7 +178,7 @@ class winMain(tk.Frame):
         
         # 使用者資料
         tk.Label(root, text=var_usr_name.get() + '  (第 '+ str(g_profile['EXAM_TIMES']) +' 次考試)', font=('Arial', 14)).place(x=20, y=5)
-        tk.Label(root, text='第 ' + str(self.examIdx+1) + '單字', font=('Arial', 14)).place(x=20, y=35)
+        tk.Label(root, text='第 ' + str(self.examIdx+1) + '單字             ', font=('Arial', 14)).place(x=20, y=35)
         # 考題
         self.row['EXAM_TIMES'] += 1 # 測試次數 
         self.exam = tk.StringVar()
@@ -190,16 +195,17 @@ class winMain(tk.Frame):
         entry_vocabulary.place(x=20,y=95)
         entry_vocabulary.bind('<Return>', self.OnCheck)
         entry_vocabulary.focus_set()
-        btn_comfirm = tk.Button(root, text='確認',  font=('Arial', 14))
-        btn_comfirm.bind('<Button-1>', self.OnCheck)
+
+        btn_comfirm = tk.Button(root, text='重撥',  font=('Arial', 14))
+        btn_comfirm.bind('<Button-1>', self.OnPlay)
         btn_comfirm.place(x=260, y=85)
-        self.myThread = Speech(self.row['VOCABULARY'])
+        self.myThread = Speech(self.row['VOCABULARY'], True)
         self.myThread.start()
         self.myThread.join()
 
         btn_exit = tk.Button(root, text='Exit',  font=('Arial', 14))
         btn_exit.bind('<Button-1>', self.OnExit)
-        btn_exit.place(x=340, y=250)
+        btn_exit.place(x=340, y=252)
 
     # 離開存 unknow file
     def OnExit(self, root):
@@ -211,10 +217,15 @@ class winMain(tk.Frame):
         g_profile['LAST_IDX'] = self.examIdx
         OnEndOfExam(g_profile['USER'])
 
+    def OnPlay(self,root):
+        self.myThread = Speech(self.row['VOCABULARY'], True)
+        self.myThread.start()
+        self.myThread.join()
+        
     # Check
     def OnCheck(self, root):
         self.num_answer += 1
-        print(self.var_anser.get(), "??", self.row['VOCABULARY'])
+        # print(self.var_anser.get(), "??", self.row['VOCABULARY'])
         if self.var_anser.get() == self.row['VOCABULARY']:
             # 假設之前有錯誤, 則存入 array 裡
             if self.nErrorCnt > 0:
@@ -230,14 +241,17 @@ class winMain(tk.Frame):
             foreground="blue", font=('Arial', 14)).place(x=20, y=125)
             
             # 顯示範例
-            tk.Label(self.root, text='範例 :' + self.row['CHINESE_EXAMPLE'], font=('Arial', 14), wraplength=350).place(x=20, y=165)
-            tk.Label(self.root, text=self.row['ENGLISH_EXAMPLE'], font=('Arial', 14), wraplength=350).place(x=20, y=200)
+            tk.Label(self.root, 
+            text='範例 :' + self.row['CHINESE_EXAMPLE'], font=('Arial', 12), 
+            bg='white', width = 42, height=2, wraplength=340, anchor = 'nw').place(x=10, y=165)
+            tk.Label(self.root, text=self.row['ENGLISH_EXAMPLE'], font=('Arial', 12), 
+            bg='white', width = 42, height=2, wraplength=340, anchor = 'nw').place(x=10, y=215)
 
-             # 範例speech
-            if g_profile['EXAMPLE_CK'] == 1 and len(self.row['CHINESE_EXAMPLE']) > 0:
-                self.myThread = Speech(self.row['ENGLISH_EXAMPLE'])
-                self.myThread.start()
-                self.myThread.join()
+            # 範例speech
+            # if g_profile['EXAMPLE_CK'] == 1 and len(self.row['CHINESE_EXAMPLE']) > 0:
+            #     self.myThread = Speech(self.row['ENGLISH_EXAMPLE'], False)
+            #     self.myThread.start()
+            #     self.myThread.join()
 
             self.examIdx += 1
             if (self.examIdx >= len(g_rows)):
@@ -249,12 +263,13 @@ class winMain(tk.Frame):
             self.var_anser.set('')      # 清除答案
             self.row = g_rows[self.examIdx]            
             self.row['EXAM_TIMES'] += 1
+            tk.Label(self.root, text='第 ' + str(self.examIdx+1) + '單字                      ', font=('Arial', 14)).place(x=20, y=35)           
             self.exam.set('中文: '+ self.row['CHINESE'] + ' (詞性: ' + self.row['TYPE'] + ' )   ')
             if g_profile['VOICE_CK'] == True:
-                self.myThread = Speech(self.row['VOCABULARY'])
+                self.myThread = Speech(self.row['VOCABULARY'], True)
                 self.myThread.start()
                 self.myThread.join()
-            print('OK')
+            # print('OK')
         else: 
             if self.nErrorCnt < int(g_profile['RETRY_COUNTER']):
                 self.row['EXAM_TIMES'] += 1
@@ -270,15 +285,15 @@ class winMain(tk.Frame):
                         listStr.append(c)
                     idx += 1
                 answer = ''.join(listStr)
-                print(answer)
+                # print(answer)
                 
                 # 第一次錯
                 self.nErrorCnt += 1
-                tk.Label(self.root, text='錯了： '+ answer + '           ', foreground="red", 
+                tk.Label(self.root, text='錯了： '+ answer + '                            ',bg='white', foreground="red", 
                 font=('Arial', 14)).place(x=20, y=125)
                 self.var_anser.set('')      # 清除答案
             else:
-                tk.Label(self.root, text='正確答案為: ' + self.row['VOCABULARY'] + '           ', foreground="blue", 
+                tk.Label(self.root, text='正確答案為: ' + self.row['VOCABULARY'] + '           ', bg='white', foreground="blue", 
                  font=('Arial', 14)).place(x=20, y=125)
 
 if __name__ == "__main__":
@@ -295,12 +310,12 @@ if __name__ == "__main__":
         g_profile['EXAMPLE_CK'] = int(ck_eaxmple.get())
         
         
-        print('select count = ', selected_count.get())
+        # print('select count = ', selected_count.get())
         SystemProfile('Write')
         
         # 取得目前使用者的資訊
         UserProfile(var_usr_name.get(), 'Read')
-        print('start count = ', selected_start.get())
+        # print('start count = ', selected_start.get())
         if selected_start.get() == '從頭':
             g_profile['EXAM_BEGIN'] = 0
         else:
