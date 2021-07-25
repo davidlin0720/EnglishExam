@@ -187,7 +187,7 @@ class winMain(tk.Frame):
         else:
             self.exam.set('中文: '+ self.row['CHINESE'] + ' (詞性: ' + self.row['TYPE'] + ' )  - 錯誤率 ' + str(self.row['WRONG_TIMES'] ) + ' / '+ str(self.row['EXAM_TIMES'] ))
 
-        tk.Label(root, textvariable=self.exam, font=('Arial', 14)).place(x=20, y=60)
+        tk.Label(root, textvariable=self.exam, foreground="red", font=('Arial', 14)).place(x=20, y=60)
         
         # 回答
         self.var_anser = tk.StringVar()
@@ -226,10 +226,12 @@ class winMain(tk.Frame):
     def OnCheck(self, root):
         self.num_answer += 1
         # print(self.var_anser.get(), "??", self.row['VOCABULARY'])
-        if self.var_anser.get() == self.row['VOCABULARY']:
+        answer_low = self.var_anser.get().lower()
+        vocabulary_low = self.row['VOCABULARY'].lower()
+        if answer_low == vocabulary_low:
             # 假設之前有錯誤, 則存入 array 裡
             if self.nErrorCnt > 0:
-                self.row['WRONG_TIMES'] = self.nErrorCnt
+                self.row['WRONG_TIMES'] = self.nErrorCnt + self.row['WRONG_TIMES']
             else:
                 self.row['CURRECT_TIMES'] += 1
     
@@ -264,7 +266,14 @@ class winMain(tk.Frame):
             self.row = g_rows[self.examIdx]            
             self.row['EXAM_TIMES'] += 1
             tk.Label(self.root, text='第 ' + str(self.examIdx+1) + '單字                      ', font=('Arial', 14)).place(x=20, y=35)           
-            self.exam.set('中文: '+ self.row['CHINESE'] + ' (詞性: ' + self.row['TYPE'] + ' )   ')
+            
+            # 單字考的次數
+            self.row['EXAM_TIMES'] += 1 # 測試次數 
+            if self.row['WRONG_TIMES'] == 0:
+                self.exam.set('中文: '+ self.row['CHINESE'] + ' (詞性: ' + self.row['TYPE'] + ' )')
+            else:
+                self.exam.set('中文: '+ self.row['CHINESE'] + ' (詞性: ' + self.row['TYPE'] + ' )  - 錯誤率 ' + str(self.row['WRONG_TIMES'] ) + ' / '+ str(self.row['EXAM_TIMES'] ))
+                 
             if g_profile['VOICE_CK'] == True:
                 self.myThread = Speech(self.row['VOCABULARY'], True)
                 self.myThread.start()
@@ -280,10 +289,16 @@ class winMain(tk.Frame):
                 idx = 0  
                 for c in self.var_anser.get():
                     if idx < nVocSize and c != vocabulary[idx]:
-                        listStr.append('_')
+                        if vocabulary[idx] == 'a' or vocabulary[idx] == 'e' or vocabulary[idx] == 'i' or vocabulary[idx] == 'o' or vocabulary[idx] == 'u':
+                            listStr.append('*')
+                        else:
+                            listStr.append('_')
                     else:
                         listStr.append(c)
                     idx += 1
+
+                if nVocSize > idx:
+                    listStr.append('_')
                 answer = ''.join(listStr)
                 # print(answer)
                 
@@ -334,7 +349,7 @@ if __name__ == "__main__":
 
     name_label = tk.Label(window_sign_up, text='姓名:  ', font=('Arial', 12)).place(x=20, y=20)
     var_usr_name = tk.StringVar()
-    var_usr_name.set('Sophine')
+    var_usr_name.set( g_profile['USER'])
     entry_usr_name = tk.Entry(window_sign_up, textvariable=var_usr_name, font=('Arial', 12)) 
     entry_usr_name.place(x=100,y=20)
     entry_usr_name.bind('<Return>', OnSign)
