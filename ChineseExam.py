@@ -7,6 +7,8 @@ import os
 from gtts import gTTS
 import re
 from playsound import playsound
+import random
+from functools import partial
 
 # global value
 g_rows = []
@@ -69,7 +71,7 @@ def UserProfile(user_name, flag):
 
 # 讀取 Vocabulary, 並且複制一份給使用者
 def LoadVocabulary(user_name):
-    user_cvs_file = user_name+'_7000_Vocabulary.csv'
+    user_cvs_file = user_name+'_7000_Vocabulary_Chinese.csv'
     if os.path.isfile(user_cvs_file) == True:
         # 假設檔案已存在則讀取檔案, 並確認是否有更新
         org_rows = []
@@ -161,6 +163,33 @@ def OnEndOfExam(user_name):
     btn_quit.bind('<Button-1>', OnQuit)
     btn_quit.place(x=60, y=80)
     
+
+def UpdateChoiseItems(self):          
+    self.tempbuf[0] = random.randrange(0, self.nMaxSize-1)
+    self.tempbuf[1] = random.randrange(0, self.nMaxSize-1)
+    self.tempbuf[2] = random.randrange(0, self.nMaxSize-1)
+    self.tempbuf[3] = self.examIdx
+
+    rs = random.getstate()
+    r0 = [random.randint(0, 100) for _ in range(10)]
+    random.setstate(rs)
+    self.answerList = random.sample(self.tempbuf, 4)
+
+    print(self.answerList)
+    
+    # All example item
+    ans01 = g_rows[self.answerList[0]]
+    self.select_01.set(ans01['CHINESE'])
+
+    ans01 = g_rows[self.answerList[1]]
+    self.select_02.set(ans01['CHINESE'])
+    
+    ans01 = g_rows[self.answerList[2]]
+    self.select_03.set(ans01['CHINESE'])
+
+    ans01 = g_rows[self.answerList[3]]
+    self.select_04.set(ans01['CHINESE'])
+
 # main 
 class winMain(tk.Frame):
     def __init__(self, root):
@@ -169,11 +198,19 @@ class winMain(tk.Frame):
         self.num_correct = 0
         self.examIdx = 0
         self.rows = g_rows
-        self.message = tk.StringVar()
+        self.nMaxSize = len(g_rows)
+        self.answerList = [0, 0, 0, 0]
+        self.tempbuf = [0, 1, 2, 3]
+
+        self.exam = tk.StringVar()
+        self.select_01 = tk.StringVar()
+        self.select_02 = tk.StringVar()
+        self.select_03 = tk.StringVar()
+        self.select_04 = tk.StringVar()
+        self.example = tk.StringVar()
         self.rightAnswer = tk.StringVar()
-        self.example_china = tk.StringVar()
-        self.example_english = tk.StringVar()
-        
+        self.message = tk.StringVar()
+
         self.nErrorCnt = 0
         self.root = root
         if g_profile['EXAM_BEGIN'] == 1:
@@ -182,49 +219,68 @@ class winMain(tk.Frame):
         
         # 使用者資料
         tk.Label(root, text=var_usr_name.get() + '  (第 '+ str(g_profile['EXAM_TIMES']) +' 次考試)', font=('Arial', 14)).place(x=20, y=5)
+        
         self.message.set('第 ' + str(self.examIdx+1) + '單字             ')
         tk.Label(root, textvariable=self.message, font=('Arial', 14)).place(x=20, y=35)
         # 考題
         self.row['EXAM_TIMES'] += 1 # 測試次數 
-        self.exam = tk.StringVar()
-        if self.row['WRONG_TIMES'] == 0:
-            self.exam.set('中文: '+ self.row['CHINESE'] + ' (詞性: ' + self.row['TYPE'] + ' )')
-        else:
-            self.exam.set('中文: '+ self.row['CHINESE'] + ' (詞性: ' + self.row['TYPE'] + ' )  - 錯誤率 ' + str(self.row['WRONG_TIMES'] ) + ' / '+ str(self.row['EXAM_TIMES'] ))
-
-        tk.Label(root, textvariable=self.exam, foreground="red", font=('Arial', 14)).place(x=20, y=60)
         
-        # 回答
-        self.var_anser = tk.StringVar()
-        entry_vocabulary = tk.Entry(root, textvariable=self.var_anser, font=('Arial', 14)) 
-        entry_vocabulary.place(x=20,y=95)
-        entry_vocabulary.bind('<Return>', self.OnCheck)
-        entry_vocabulary.focus_set()
+        if self.row['WRONG_TIMES'] == 0:
+            self.exam.set('英文: '+ self.row['VOCABULARY'] + ' (詞性: ' + self.row['TYPE'] + ' )')
+        else:
+            self.exam.set('英文: '+ self.row['VOCABULARY'] + ' (詞性: ' + self.row['TYPE'] + ' )  - 錯誤率 ' + str(self.row['WRONG_TIMES'] ) + ' / '+ str(self.row['EXAM_TIMES'] ))
 
+        tk.Label(root, textvariable=self.exam, foreground="red", bg='white', font=('Arial', 14)).place(x=20, y=60)
+              
+        self.example.set('Ex:' + self.row['ENGLISH_EXAMPLE'])
+        # 顯示句子
+        tk.Label(self.root, 
+            textvariable=self.example, font=('Arial', 12), 
+            bg='white', width = 40, height=2, wraplength=340, anchor = 'nw').place(x=20, y=90)
+        
+        self.rightAnswer.set('')
+        tk.Label(self.root, textvariable=self.rightAnswer, 
+            foreground="blue", font=('Arial', 14)).place(x=20, y=250)
+
+        # 回答
+        # self.var_anser = tk.StringVar()
+        # entry_vocabulary = tk.Entry(root, textvariable=self.var_anser, font=('Arial', 14)) 
+        # entry_vocabulary.place(x=20,y=95)
+        # entry_vocabulary.bind('<Return>', self.OnCheck)
+        # entry_vocabulary.focus_set()
         btn_comfirm = tk.Button(root, text='重撥',  font=('Arial', 14))
         btn_comfirm.bind('<Button-1>', self.OnPlay)
-        btn_comfirm.place(x=260, y=85)
+        btn_comfirm.place(x=280, y=50)
         self.myThread = Speech(self.row['VOCABULARY'], True)
         self.myThread.start()
         self.myThread.join()
+
+      
+        UpdateChoiseItems(self)
+        self.btn_comfirm_01 = tk.Button(root, textvariable=self.select_01,  font=('Arial', 12), width = 18, 
+        command=partial(self.OnCheck, self.answerList[0]))
+        self.btn_comfirm_01.place(x=20, y=150)
+
+        
+        self.btn_comfirm_02 = tk.Button(root, textvariable=self.select_02,  font=('Arial', 12), width = 18,
+        command=partial(self.OnCheck, self.answerList[1]))
+        self.btn_comfirm_02.place(x=210, y=150)
+
+        
+        self.btn_comfirm_03 = tk.Button(root, textvariable=self.select_03,  font=('Arial', 12), width = 18,
+        command=partial(self.OnCheck, self.answerList[2]))
+        self.btn_comfirm_03.place(x=20, y=210)
+
+        self.btn_comfirm_04 = tk.Button(root, textvariable=self.select_04,  font=('Arial', 12), width = 18,
+        command=partial(self.OnCheck, self.answerList[3]))
+        self.btn_comfirm_04.place(x=210, y=210)        
+
 
         btn_exit = tk.Button(root, text='Exit',  font=('Arial', 14))
         btn_exit.bind('<Button-1>', self.OnExit)
         btn_exit.place(x=340, y=252)
 
-        # 其它訊息, 暫時空白
-        self.rightAnswer.set('')
-        tk.Label(self.root, textvariable = self.rightAnswer, 
-        foreground="blue", font=('Arial', 14)).place(x=20, y=125)
-        
-        self.example_china.set('')
-        tk.Label(self.root, 
-        textvariable=self.example_china, font=('Arial', 12), 
-        bg='white', width = 42, height=2, wraplength=340, anchor = 'nw').place(x=10, y=165)
-        
-        self.example_english.set('')
-        tk.Label(self.root, textvariable=self.example_english, font=('Arial', 12), 
-        bg='white', width = 42, height=2, wraplength=340, anchor = 'nw').place(x=10, y=215)
+
 
     # 離開存 unknow file
     def OnExit(self, root):
@@ -242,13 +298,10 @@ class winMain(tk.Frame):
         self.myThread.join()
         
     # Check
-    def OnCheck(self, root):
+    def OnCheck(self, num):
         self.num_answer += 1
-        # print(self.var_anser.get(), "??", self.row['VOCABULARY'])
-        answer_low = self.var_anser.get().lower()
-        vocabulary_low = self.row['VOCABULARY'].lower()
-        if answer_low == vocabulary_low:
-            # 假設之前有錯誤, 則存入 array 裡
+        if num == self.examIdx:
+           # 假設之前有錯誤, 則存入 array 裡
             if self.nErrorCnt > 0:
                 self.row['WRONG_TIMES'] = self.nErrorCnt + self.row['WRONG_TIMES']
             else:
@@ -258,84 +311,58 @@ class winMain(tk.Frame):
             self.nErrorCnt = 0
             self.num_correct += 1
             g_profile['LAST_IDX'] = self.examIdx
-            self.rightAnswer.set('答對: '+ self.row['CHINESE'] + ' ('+ self.row['VOCABULARY']  + ')')
-                        
-            # 顯示範例
-            self.example_china.set('範例 :' + self.row['CHINESE_EXAMPLE'])
-            self.example_english.set(self.row['ENGLISH_EXAMPLE'])
-            # tk.Label(self.root, 
-            # text='範例 :' + self.row['CHINESE_EXAMPLE'], font=('Arial', 12), 
-            # bg='white', width = 42, height=2, wraplength=340, anchor = 'nw').place(x=10, y=165)
-            # tk.Label(self.root, text=self.row['ENGLISH_EXAMPLE'], font=('Arial', 12), 
-            # bg='white', width = 42, height=2, wraplength=340, anchor = 'nw').place(x=10, y=215)
-
-            # 範例speech
-            # if g_profile['EXAMPLE_CK'] == 1 and len(self.row['CHINESE_EXAMPLE']) > 0:
-            #     self.myThread = Speech(self.row['ENGLISH_EXAMPLE'], False)
-            #     self.myThread.start()
-            #     self.myThread.join()
-
+            #tk.Label(self.root, text='答對: '+ self.row['CHINESE'] + ' ('+ self.row['VOCABULARY']  + ')      ', 
+            #foreground="blue", font=('Arial', 14)).place(x=20, y=250)
+            self.rightAnswer.set('答對: '+ self.row['CHINESE'] + ' ('+ self.row['VOCABULARY']  + ')      ');
+            
             self.examIdx += 1
             if (self.examIdx >= len(g_rows)):
                 g_profile['EXAM_WORDS'] = self.num_answer
                 g_profile['KNOW_WORDS'] = self.num_correct
                 g_profile['LAST_IDX'] = self.examIdx;
                 OnEndOfExam(g_profile['USER'])
-                
-            self.var_anser.set('')      # 清除答案
+            
+            # 
             self.row = g_rows[self.examIdx]            
             self.row['EXAM_TIMES'] += 1
-            self.message.set('第 ' + str(self.examIdx+1) + '單字')
-                   
-            # 單字考的次數
+            self.message.set('第 ' + str(self.examIdx+1) + '單字             ')           
+            # 考題
             self.row['EXAM_TIMES'] += 1 # 測試次數 
+            # self.exam = tk.StringVar()
             if self.row['WRONG_TIMES'] == 0:
-                self.exam.set('中文: '+ self.row['CHINESE'] + ' (詞性: ' + self.row['TYPE'] + ' )')
+                self.exam.set('英文: '+ self.row['VOCABULARY'] + ' (詞性: ' + self.row['TYPE'] + ' )')
             else:
-                self.exam.set('中文: '+ self.row['CHINESE'] + ' (詞性: ' + self.row['TYPE'] + ' )  - 錯誤率 ' + str(self.row['WRONG_TIMES'] ) + ' / '+ str(self.row['EXAM_TIMES'] ))
-                 
-            if g_profile['VOICE_CK'] == True:
-                self.myThread = Speech(self.row['VOCABULARY'], True)
-                self.myThread.start()
-                self.myThread.join()
-            # print('OK')
-        else: 
-            if self.nErrorCnt < int(g_profile['RETRY_COUNTER']):
-                self.row['EXAM_TIMES'] += 1
-                
-                listStr = []
-                vocabulary = self.row['VOCABULARY'];
-                nVocSize = len(self.row['VOCABULARY'])
-                idx = 0  
-                for c in self.var_anser.get():
-                    if idx < nVocSize and c != vocabulary[idx]:
-                        if vocabulary[idx] == 'a' or vocabulary[idx] == 'e' or vocabulary[idx] == 'i' or vocabulary[idx] == 'o' or vocabulary[idx] == 'u':
-                            listStr.append('*')
-                        else:
-                            listStr.append('_')
-                    else:
-                        listStr.append(c)
-                    idx += 1
+                self.exam.set('英文: '+ self.row['VOCABULARY'] + ' (詞性: ' + self.row['TYPE'] + ' )  - 錯誤率 ' + str(self.row['WRONG_TIMES'] ) + ' / '+ str(self.row['EXAM_TIMES'] ))
 
-                if nVocSize > idx:
-                    listStr.append('_')
-                answer = ''.join(listStr)
-                # print(answer)
-                
-                # 第一次錯
-                self.nErrorCnt += 1
-                #tk.Label(self.root, text='錯了： '+ answer + '                            ',bg='white', foreground="red", 
-                #font=('Arial', 14)).place(x=20, y=125)
-                self.rightAnswer.set('錯了： '+ answer)
-                self.var_anser.set('')      # 清除答案
-            else:
-                #tk.Label(self.root, text='正確答案為: ' + self.row['VOCABULARY'] + '           ', bg='white', foreground="blue", 
-                # font=('Arial', 14)).place(x=20, y=125)
-                self.rightAnswer.set('正確答案為: ' + self.row['VOCABULARY'])
+            # self.example = tk.StringVar()
+            self.example.set('Ex:' + self.row['ENGLISH_EXAMPLE'])
+            
+            # # 顯示句子
+            # tk.Label(self.root, 
+            #     text='Ex:' + self.row['ENGLISH_EXAMPLE'], font=('Arial', 12), 
+            #     bg='white', width = 40, height=2, wraplength=340, anchor = 'nw').place(x=20, y=90)
+
+            btn_comfirm = tk.Button(root, text='重撥',  font=('Arial', 14))
+            btn_comfirm.bind('<Button-1>', self.OnPlay)
+            btn_comfirm.place(x=280, y=50)
+            self.myThread = Speech(self.row['VOCABULARY'], True)
+            self.myThread.start()
+            self.myThread.join()
+
+            UpdateChoiseItems(self)
+            self.btn_comfirm_01.config(command=partial(self.OnCheck, self.answerList[0]))
+            self.btn_comfirm_02.config(command=partial(self.OnCheck, self.answerList[1]))
+            self.btn_comfirm_03.config(command=partial(self.OnCheck, self.answerList[2]))
+            self.btn_comfirm_04.config(command=partial(self.OnCheck, self.answerList[3]))
+
+        else:
+           self.row['EXAM_TIMES'] += 1
+           self.rightAnswer.set('答案不對請再重選')
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.title('英文單字測試')
+    random.seed(10)  
+    root.title('中文單字測試')
     root.geometry('400x300')
     # #main thread
     def OnSign(event):
