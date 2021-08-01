@@ -5,13 +5,13 @@ from googletrans import Translator
 # 实例化翻译器，由于模块默认的服务url在国内无法使用，所以我们修改成国内可用的google翻译服务地址
 translator = Translator(service_urls=["translate.google.cn"])
 
-#csv_file = 'all_exam_vocabulary.csv'
-#fileList = ['101.txt', '102.txt', '103.txt', '104.txt', '105.txt', 
-#           '106.txt', '107.txt', '108.txt', '109.txt', '109_1.txt', '110.txt']
-fileList = ['110.txt']
-csv_file = '110_exam_vocabulary.csv'
+csv_file = 'all_exam_vocabulary.csv'
+fileList = ['exams/101.txt', 'exams/102.txt', 'exams/103.txt', 'exams/104.txt', 'exams/105.txt', 
+           'exams/106.txt', 'exams/107.txt', 'exams/108.txt', 'exams/109.txt', 'exams/109_1.txt', 'exams/110.txt']
+# fileList = ['exams/110.txt']
+# csv_file = '110_exam_vocabulary.csv'
 
-ignore_words = ['(A)', '(B)', '(C)', '(D)', '1.', '2.', '3.', '4.', '______', '_____', '_______', '________', '__________', '-', ':', 
+ignore_words = ['(A)', '(B)', '(C)', '(D)', '1.', '2.', '3.', '4.', '______', '_____', '_______', '________', '__________', '-', ':', '－－', 
                 '(a)','(b)', '(c)', '(b)', '(d)','(e)','(f)','(g)','(h)','(i)', '(j)','(“iq)', '(-)',
                 '1.','2.','3.','4.','5.','6.','7.', '8.','9.',
                 '10.','11.','12.','13','14.','15.','16.','17.','18.','19.',
@@ -46,7 +46,9 @@ ignore_words = ['(A)', '(B)', '(C)', '(D)', '1.', '2.', '3.', '4.', '______', '_
                  'wheel', 'foot', 'turned', 'friends', 'popular', 'thousands', 'build', 'sold', 'fashions', 'life', 'seven', 'different', 'park',
                  'more', 'human', 'each', 'two', 'death', 'took', 'changed', 'moving', 'large', 'colored', 'lose', 'stom', 'cloud', 'him', 'until',
                  'thing', 'happened', 'again', 'all', 'could', 'got', 'anyway', 'june', 'final', 'fishing', 'believe', 'god', 'enough', 'can', 'hard', 
-                 'famous', 'musicians', 'probllems', 'fashionable', 'wonderland', 'located', 'children', 'real']
+                 'famous', 'musicians', 'probllems', 'fashionable', 'wonderland', 'located', 'children', 'real', 'th', '-year', 'hou-i', 'year—', 'asset—her', 
+                 'myself', 'ad', 'three-year-old', 'is—trips', 'mei-ling', 'warm-up', 'foolishness—a', 'health-policy', 'large-scale',
+                 'graduate-level', 'one-size-fits-all', 'six', 'ii', 'sex', 'users', 'fire', 'bc', 'wi', 'aa', 'ali', 'bli', 'cli', 'cnn', 'etc' ]
 fomart = 'abcdefghijklmnopqrstuvwxyz'
 vocabulary = {}
 rows = []
@@ -56,6 +58,9 @@ g_cvsVocabulary = []
 def countVocabulary(row):
     row = row.lower();
     row = row.replace('\r\n', '')
+    row = row.replace('-', ' ')
+    row = row.replace('—', ' ')
+    row = row.replace(':', ' ')
     row = row.replace('(', '')
     row = row.replace(')', '')
     row = row.replace('”', '')
@@ -83,7 +88,7 @@ def countVocabulary(row):
     for word in words:
         if not(word in ignore_words):
             if vocabulary.get(word, -1) == -1:
-                if len(word) > 1:
+                if len(word) > 2:
                     vocabulary.setdefault(word, 1)
             else:
                 vocabulary[word] = vocabulary[word]+1
@@ -104,11 +109,8 @@ for row in vocabulary:
     # print(row, '= ', result.text, '(', result.extra_data, ')')
     # print(row, '= ', result.text)
         
-        
-    #print(row, "數量", vocabulary[row])
-
 #print(vocabulary)
-# print('單字數', len(vocabulary))
+print('單字數', len(vocabulary))
 with open(csv_file, 'w', encoding='utf-8-sig', newline='') as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=cvs_colums)
     writer.writeheader()
